@@ -30,9 +30,11 @@ function processFile() {
       return;
     }
 
-    // Detect duplicates
-    const ticketMap = {};
-    const duplicates = [];
+    // =========================
+    // STEP 1 — COUNT TICKETS
+    // =========================
+
+    const ticketCount = {};
 
     jsonData.forEach(row => {
 
@@ -40,42 +42,80 @@ function processFile() {
 
       if (!ticketNo) return;
 
-      if (ticketMap[ticketNo]) {
+      ticketCount[ticketNo] =
+        (ticketCount[ticketNo] || 0) + 1;
+    });
 
-        // Add first occurrence if not already added
-        if (!ticketMap[ticketNo].added) {
-          duplicates.push(ticketMap[ticketNo].row);
-          ticketMap[ticketNo].added = true;
-        }
+    // =========================
+    // STEP 2 — FILTER DUPLICATES
+    // =========================
 
+    const duplicates = [];
+
+    jsonData.forEach(row => {
+
+      const ticketNo = row["Ticket No"];
+      const folderStatus =
+        String(row["Folder Status"] || "").trim().toLowerCase();
+
+      const invoice =
+        String(row["Invoice"] || "").trim();
+
+      // Skip empty Ticket No
+      if (!ticketNo) return;
+
+      // Check duplicate
+      const isDuplicate = ticketCount[ticketNo] > 1;
+
+      // Exclusion Rule
+      const excludeRecord =
+        folderStatus === "partial refund" &&
+        invoice !== "";
+
+      // Add only valid duplicates
+      if (isDuplicate && !excludeRecord) {
         duplicates.push(row);
-
-      } else {
-
-        ticketMap[ticketNo] = {
-          row: row,
-          added: false
-        };
       }
 
     });
 
-    // Create new workbook
+    // =========================
+    // STEP 3 — CREATE OUTPUT
+    // =========================
+
     const newWorkbook = XLSX.utils.book_new();
 
-    // Original Sheet
-    const originalSheet = XLSX.utils.json_to_sheet(jsonData);
-    XLSX.utils.book_append_sheet(newWorkbook, originalSheet, "Original Data");
+    // Original Data Sheet
+    const originalSheet =
+      XLSX.utils.json_to_sheet(jsonData);
+
+    XLSX.utils.book_append_sheet(
+      newWorkbook,
+      originalSheet,
+      "Original Data"
+    );
 
     // Duplicate Sheet
-    const duplicateSheet = XLSX.utils.json_to_sheet(duplicates);
-    XLSX.utils.book_append_sheet(newWorkbook, duplicateSheet, "Duplicate Tickets");
+    const duplicateSheet =
+      XLSX.utils.json_to_sheet(duplicates);
 
-    // Download file
-    XLSX.writeFile(newWorkbook, "Duplicate_Ticket_Report.xlsx");
+    XLSX.utils.book_append_sheet(
+      newWorkbook,
+      duplicateSheet,
+      "Duplicate Tickets"
+    );
+
+    // =========================
+    // STEP 4 — DOWNLOAD
+    // =========================
+
+    XLSX.writeFile(
+      newWorkbook,
+      "Filtered_Duplicate_Tickets.xlsx"
+    );
 
     status.innerHTML =
-      `Processing complete. ${duplicates.length} duplicate records found.`;
+      `Completed. ${duplicates.length} duplicate records exported.`;
 
   };
 
