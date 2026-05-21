@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Duplicate Ticket Detector</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Duplicate Ticket Detector</h1>
+
+    <p>Upload Excel file to identify duplicate Ticket Numbers</p>
+
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+
+    <button id="processBtn">
+      Process File
+    </button>
+
+    <div id="status"></div>
+  </div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>
