@@ -47,34 +47,45 @@ function processFile() {
 
     });
 
-    const duplicates = [];
+ const duplicates = [];
 
-    // Process each Ticket No
-    Object.keys(groupedTickets).forEach(ticketNo => {
+// Process each Ticket No
+Object.keys(groupedTickets).forEach(ticketNo => {
 
-      const records = groupedTickets[ticketNo];
+  const records = groupedTickets[ticketNo];
 
-      // Only interested in duplicates
-      if (records.length > 1) {
+  // Only process duplicate Ticket No
+  if (records.length > 1) {
 
-        // Get all Folder Status values
-        const statuses = records.map(r =>
-          (r["Folder Status"] || "").toString().trim().toLowerCase()
-        );
+    // Normalize statuses
+    const statuses = records.map(r =>
+      (r["Folder Status"] || "")
+        .toString()
+        .trim()
+        .toLowerCase()
+    );
 
-        const hasPartialRefund = statuses.includes("partial refund");
-        const hasInvoice = statuses.includes("invoice");
+    // Detect statuses
+    const hasPartialRefund = statuses.some(
+      s => s.includes("partial refund")
+    );
 
-        // EXCLUDE if Partial Refund + Invoice combination exists
-        if (hasPartialRefund && hasInvoice) {
-          return;
-        }
+    const hasInvoice = statuses.some(
+      s =>
+        s.includes("invoice") ||
+        s.includes("invoiced")
+    );
 
-        // Otherwise include all duplicate rows
-        duplicates.push(...records);
-      }
+    // EXCLUDE valid refund/invoice combinations
+    if (hasPartialRefund && hasInvoice) {
+      return;
+    }
 
-    });
+    // Include remaining duplicates
+    duplicates.push(...records);
+  }
+
+});
 
     // Create output workbook
     const newWorkbook = XLSX.utils.book_new();
