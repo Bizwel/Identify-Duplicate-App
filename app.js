@@ -1,12 +1,19 @@
-document.getElementById("processBtn").addEventListener("click", processFile);
+document.getElementById("processBtn")
+  .addEventListener("click", processFile);
 
 function processFile() {
 
-  const fileInput = document.getElementById("fileInput");
-  const status = document.getElementById("status");
+  const fileInput =
+    document.getElementById("fileInput");
+
+  const status =
+    document.getElementById("status");
 
   if (!fileInput.files.length) {
-    status.innerHTML = "Please upload a file.";
+
+    status.innerHTML =
+      "Please upload a file.";
+
     return;
   }
 
@@ -18,29 +25,37 @@ function processFile() {
 
     try {
 
-      const data = new Uint8Array(e.target.result);
+      const data =
+        new Uint8Array(e.target.result);
 
-      // Read workbook
+      // =========================
+      // READ WORKBOOK
+      // =========================
+
       const workbook = XLSX.read(data, {
         type: "array"
       });
 
-      // Get first sheet
-      const firstSheetName = workbook.SheetNames[0];
+      const firstSheetName =
+        workbook.SheetNames[0];
 
-      const worksheet = workbook.Sheets[firstSheetName];
+      const worksheet =
+        workbook.Sheets[firstSheetName];
 
-      // Convert to JSON
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData =
+        XLSX.utils.sheet_to_json(worksheet);
 
       if (!jsonData.length) {
-        status.innerHTML = "No data found in file.";
+
+        status.innerHTML =
+          "No data found.";
+
         return;
       }
 
-      // ============================
-      // NORMALIZE STATUS FUNCTION
-      // ============================
+      // =========================
+      // NORMALIZE STATUS
+      // =========================
 
       function normalizeStatus(status) {
 
@@ -49,41 +64,45 @@ function processFile() {
           .trim()
           .toLowerCase();
 
-        // Normalize all invoice variations
+        // Invoice variations
         if (
-          status.includes("invoice") ||
-          status.includes("invoiced")
+          status.includes("invoice")
         ) {
           return "invoice";
         }
 
-        // Normalize all partial refund variations
-        if (status.includes("partial refund")) {
+        // Partial Refund variations
+        if (
+          status.includes("partial refund")
+        ) {
           return "partial refund";
         }
 
-        // Normalize saved
-        if (status.includes("saved")) {
+        // Saved
+        if (
+          status.includes("saved")
+        ) {
           return "saved";
         }
 
-        // Return original normalized text
         return status;
       }
 
-      // ============================
-      // GROUP RECORDS BY TICKET NO
-      // ============================
+      // =========================
+      // GROUP BY TICKET NO
+      // =========================
 
       const groupedTickets = {};
 
       jsonData.forEach(row => {
 
-        const ticketNo = row["Ticket No"];
+        const ticketNo =
+          row["Ticket No"];
 
         if (!ticketNo) return;
 
         if (!groupedTickets[ticketNo]) {
+
           groupedTickets[ticketNo] = [];
         }
 
@@ -91,62 +110,86 @@ function processFile() {
 
       });
 
-      // ============================
-      // PROCESS DUPLICATES
-      // ============================
+      // =========================
+      // PROCESS RECORDS
+      // =========================
 
       const duplicates = [];
       const excludedRecords = [];
 
-      Object.keys(groupedTickets).forEach(ticketNo => {
+      Object.keys(groupedTickets)
+        .forEach(ticketNo => {
 
-        const records = groupedTickets[ticketNo];
+        const records =
+          groupedTickets[ticketNo];
 
-        // Only process duplicate ticket numbers
+        // Only process duplicates
         if (records.length > 1) {
 
-          // Normalize statuses
-          const statuses = records.map(r =>
-            normalizeStatus(r["Folder Status"])
-          );
+          // IMPORTANT:
+          // Support BOTH Status and Folder Status
 
-          // Check conditions
+          const statuses = records.map(r => {
+
+            const rawStatus =
+              r["Status"] ||
+              r["Folder Status"] ||
+              "";
+
+            return normalizeStatus(rawStatus);
+
+          });
+
           const hasPartialRefund =
-            statuses.includes("partial refund");
+            statuses.includes(
+              "partial refund"
+            );
 
           const hasInvoice =
-            statuses.includes("invoice");
+            statuses.includes(
+              "invoice"
+            );
 
-          // =========================================
-          // EXCLUDE VALID PARTIAL REFUND + INVOICE
-          // =========================================
+          // =========================
+          // EXCLUDE VALID CASES
+          // =========================
 
-          if (hasPartialRefund && hasInvoice) {
+          if (
+            hasPartialRefund &&
+            hasInvoice
+          ) {
 
-            excludedRecords.push(...records);
+            excludedRecords.push(
+              ...records
+            );
 
             return;
           }
 
-          // =========================================
-          // INCLUDE REAL DUPLICATES
-          // =========================================
+          // =========================
+          // TRUE DUPLICATES
+          // =========================
 
-          duplicates.push(...records);
+          duplicates.push(
+            ...records
+          );
 
         }
 
       });
 
-      // ============================
-      // CREATE OUTPUT WORKBOOK
-      // ============================
+      // =========================
+      // CREATE OUTPUT FILE
+      // =========================
 
-      const outputWorkbook = XLSX.utils.book_new();
+      const outputWorkbook =
+        XLSX.utils.book_new();
 
-      // Original Data Sheet
+      // Original Data
       const originalSheet =
-        XLSX.utils.json_to_sheet(jsonData);
+        XLSX.utils.json_to_sheet(
+          jsonData
+        );
 
       XLSX.utils.book_append_sheet(
         outputWorkbook,
@@ -154,9 +197,11 @@ function processFile() {
         "Original Data"
       );
 
-      // Duplicate Sheet
+      // Duplicate Tickets
       const duplicateSheet =
-        XLSX.utils.json_to_sheet(duplicates);
+        XLSX.utils.json_to_sheet(
+          duplicates
+        );
 
       XLSX.utils.book_append_sheet(
         outputWorkbook,
@@ -164,9 +209,11 @@ function processFile() {
         "Duplicate Tickets"
       );
 
-      // Excluded Sheet
+      // Excluded Records
       const excludedSheet =
-        XLSX.utils.json_to_sheet(excludedRecords);
+        XLSX.utils.json_to_sheet(
+          excludedRecords
+        );
 
       XLSX.utils.book_append_sheet(
         outputWorkbook,
@@ -174,24 +221,35 @@ function processFile() {
         "Excluded Records"
       );
 
-      // ============================
-      // EXPORT FILE
-      // ============================
+      // =========================
+      // EXPORT
+      // =========================
 
       XLSX.writeFile(
         outputWorkbook,
         "Duplicate_Ticket_Report.xlsx"
       );
 
-      // ============================
-      // STATUS MESSAGE
-      // ============================
+      // =========================
+      // UI STATUS
+      // =========================
 
       status.innerHTML = `
-        Processing Complete.<br><br>
-        Total Records: ${jsonData.length}<br>
-        Duplicate Records: ${duplicates.length}<br>
-        Excluded Valid Refund Cases: ${excludedRecords.length}
+        <strong>Processing Complete.</strong>
+        <br><br>
+
+        Total Records:
+        ${jsonData.length}
+
+        <br>
+
+        Duplicate Records:
+        ${duplicates.length}
+
+        <br>
+
+        Excluded Valid Refund Cases:
+        ${excludedRecords.length}
       `;
 
     } catch (error) {
@@ -199,11 +257,12 @@ function processFile() {
       console.error(error);
 
       status.innerHTML =
-        "An error occurred while processing the file.";
+        "Error processing file.";
 
     }
 
   };
 
   reader.readAsArrayBuffer(file);
+
 }
