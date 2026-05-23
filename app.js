@@ -30,11 +30,8 @@ function processFile() {
       return;
     }
 
-    // =========================
-    // STEP 1 — COUNT TICKETS
-    // =========================
-
-    const ticketCount = {};
+    // Group rows by Ticket No
+    const groupedTickets = {};
 
     jsonData.forEach(row => {
 
@@ -42,52 +39,48 @@ function processFile() {
 
       if (!ticketNo) return;
 
-      ticketCount[ticketNo] =
-        (ticketCount[ticketNo] || 0) + 1;
-    });
+      if (!groupedTickets[ticketNo]) {
+        groupedTickets[ticketNo] = [];
+      }
 
-    // =========================
-    // STEP 2 — FILTER DUPLICATES
-    // =========================
+      groupedTickets[ticketNo].push(row);
+
+    });
 
     const duplicates = [];
 
-    jsonData.forEach(row => {
+    // Process each Ticket No
+    Object.keys(groupedTickets).forEach(ticketNo => {
 
-      const ticketNo = row["Ticket No"];
-      const folderStatus =
-        String(row["Folder Status"] || "").trim().toLowerCase();
+      const records = groupedTickets[ticketNo];
 
-      const invoice =
-        String(row["Invoice"] || "").trim();
+      // Only interested in duplicates
+      if (records.length > 1) {
 
-      // Skip empty Ticket No
-      if (!ticketNo) return;
+        // Get all Folder Status values
+        const statuses = records.map(r =>
+          (r["Folder Status"] || "").toString().trim().toLowerCase()
+        );
 
-      // Check duplicate
-      const isDuplicate = ticketCount[ticketNo] > 1;
+        const hasPartialRefund = statuses.includes("partial refund");
+        const hasInvoice = statuses.includes("invoice");
 
-      // Exclusion Rule
-      const excludeRecord =
-        folderStatus === "partial refund" &&
-        invoice !== "";
+        // EXCLUDE if Partial Refund + Invoice combination exists
+        if (hasPartialRefund && hasInvoice) {
+          return;
+        }
 
-      // Add only valid duplicates
-      if (isDuplicate && !excludeRecord) {
-        duplicates.push(row);
+        // Otherwise include all duplicate rows
+        duplicates.push(...records);
       }
 
     });
 
-    // =========================
-    // STEP 3 — CREATE OUTPUT
-    // =========================
-
+    // Create output workbook
     const newWorkbook = XLSX.utils.book_new();
 
     // Original Data Sheet
-    const originalSheet =
-      XLSX.utils.json_to_sheet(jsonData);
+    const originalSheet = XLSX.utils.json_to_sheet(jsonData);
 
     XLSX.utils.book_append_sheet(
       newWorkbook,
@@ -96,8 +89,7 @@ function processFile() {
     );
 
     // Duplicate Sheet
-    const duplicateSheet =
-      XLSX.utils.json_to_sheet(duplicates);
+    const duplicateSheet = XLSX.utils.json_to_sheet(duplicates);
 
     XLSX.utils.book_append_sheet(
       newWorkbook,
@@ -105,17 +97,14 @@ function processFile() {
       "Duplicate Tickets"
     );
 
-    // =========================
-    // STEP 4 — DOWNLOAD
-    // =========================
-
+    // Export
     XLSX.writeFile(
       newWorkbook,
-      "Filtered_Duplicate_Tickets.xlsx"
+      "Filtered_Duplicate_Report.xlsx"
     );
 
     status.innerHTML =
-      `Completed. ${duplicates.length} duplicate records exported.`;
+      `Processing complete. ${duplicates.length} duplicate rows found after exclusions.`;
 
   };
 
